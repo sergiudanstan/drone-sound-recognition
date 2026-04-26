@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Drone Sound Recognition Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Acoustic recognition lab</p>
+          <h1>How to Recognize Drones by Sound?</h1>
+        </div>
+        <div class="status-pill" id="audioStatus">
+          <span class="status-dot"></span>
+          <span id="statusText">Idle</span>
+        </div>
+      </header>
+
+      <section class="control-strip" aria-label="Audio input controls">
+        <button class="primary-action" id="micButton" type="button">
+          <span aria-hidden="true">●</span>
+          Microphone
+        </button>
+        <button class="secondary-action" id="demoButton" type="button">
+          <span aria-hidden="true">▶</span>
+          Simulated drone
+        </button>
+        <button class="secondary-action file-action" id="fileButton" type="button">
+          <span aria-hidden="true">↥</span>
+          Audio file
+        </button>
+        <input id="audioFile" type="file" accept="audio/*" />
+        <button class="secondary-action stop-action" id="stopButton" type="button">
+          <span aria-hidden="true">■</span>
+          Stop
+        </button>
+        <select id="inputDevice" aria-label="Microphone input device">
+          <option value="">Default input</option>
+        </select>
+      </section>
+
+      <section class="metric-grid" aria-label="Recognition summary">
+        <article class="metric-card score-card">
+          <span class="metric-label">Evidence</span>
+          <strong id="evidenceLabel">Waiting for audio</strong>
+          <div class="score-track">
+            <div class="score-fill" id="scoreFill"></div>
+          </div>
+          <span class="metric-note" id="scoreNote">Sound-only recognition is probabilistic.</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Dominant peak</span>
+          <strong id="peakFrequency">-- Hz</strong>
+          <span class="metric-note" id="peakNote">No stable peak yet</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Harmonics</span>
+          <strong id="harmonicCount">0 aligned</strong>
+          <span class="metric-note">Rotor and blade-pass stacks</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Persistence</span>
+          <strong id="persistenceValue">0 windows</strong>
+          <span class="metric-note">Evidence across rolling frames</span>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel spectrum-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Spectrogram</h2>
+              <p>Persistent bright horizontal bands suggest tonal rotor components.</p>
+            </div>
+            <span id="windowReadout">2048 FFT</span>
+          </div>
+          <canvas id="spectrogramCanvas" width="960" height="420" aria-label="Frequency spectrogram"></canvas>
+          <div class="frequency-scale" aria-hidden="true">
+            <span>8 kHz</span>
+            <span>4 kHz</span>
+            <span>1 kHz</span>
+            <span>100 Hz</span>
+          </div>
+        </article>
+
+        <aside class="panel evidence-panel">
+          <div class="panel-heading compact">
+            <h2>Recognition Cues</h2>
+            <span id="lastUpdate">No frames</span>
+          </div>
+
+          <div class="cue-list">
+            <div class="cue-row">
+              <div>
+                <span>Tonal peaks</span>
+                <small>Narrowband energy above background</small>
+              </div>
+              <meter id="tonalMeter" min="0" max="100" value="0"></meter>
+            </div>
+            <div class="cue-row">
+              <div>
+                <span>Harmonic spacing</span>
+                <small>Repeated peak intervals</small>
+              </div>
+              <meter id="harmonicMeter" min="0" max="100" value="0"></meter>
+            </div>
+            <div class="cue-row">
+              <div>
+                <span>Motor band</span>
+                <small>Energy near rotor and motor ranges</small>
+              </div>
+              <meter id="bandMeter" min="0" max="100" value="0"></meter>
+            </div>
+            <div class="cue-row">
+              <div>
+                <span>Modulation</span>
+                <small>Flutter from throttle and attitude changes</small>
+              </div>
+              <meter id="modulationMeter" min="0" max="100" value="0"></meter>
+            </div>
+          </div>
+
+          <div class="mode-group" aria-label="Target profile">
+            <button class="mode-button active" data-profile="small" type="button">Small quad</button>
+            <button class="mode-button" data-profile="cinema" type="button">Cine drone</button>
+            <button class="mode-button" data-profile="large" type="button">Large UAV</button>
+          </div>
+
+          <div class="slider-stack">
+            <label>
+              <span>Score threshold <strong id="thresholdReadout">42%</strong></span>
+              <input id="thresholdControl" type="range" min="30" max="75" value="42" />
+            </label>
+            <label>
+              <span>Minimum event duration <strong id="durationReadout">1.5 s</strong></span>
+              <input id="durationControl" type="range" min="0.5" max="5" step="0.5" value="1.5" />
+            </label>
+            <label>
+              <span>Background adaptation <strong id="backgroundReadout">12</strong></span>
+              <input id="backgroundControl" type="range" min="2" max="35" value="12" />
+            </label>
+            <label>
+              <span>Persistence target <strong id="persistenceReadout">10</strong></span>
+              <input id="persistenceControl" type="range" min="4" max="24" value="10" />
+            </label>
+            <label>
+              <span>Microphone gain <strong id="gainReadout">1.0x</strong></span>
+              <input id="gainControl" type="range" min="0.4" max="2.5" step="0.1" value="1" />
+            </label>
+            <label class="check-row">
+              <input id="monitorControl" type="checkbox" />
+              Monitor file and demo audio
+            </label>
+            <div class="utility-actions">
+              <button id="calibrateButton" type="button">Calibrate</button>
+              <button id="exportButton" type="button">Export events</button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="lower-grid">
+        <article class="panel waveform-panel">
+          <div class="panel-heading compact">
+            <h2>Waveform</h2>
+            <span id="levelReadout">-∞ dB</span>
+          </div>
+          <canvas id="waveformCanvas" width="720" height="180" aria-label="Audio waveform"></canvas>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading compact">
+            <h2>Band Energy</h2>
+            <span>Relative to current background</span>
+          </div>
+          <div class="band-bars" id="bandBars">
+            <div class="band-row">
+              <span>Low</span>
+              <div><i id="lowBand"></i></div>
+              <strong id="lowBandValue">0%</strong>
+            </div>
+            <div class="band-row">
+              <span>Rotor</span>
+              <div><i id="rotorBand"></i></div>
+              <strong id="rotorBandValue">0%</strong>
+            </div>
+            <div class="band-row">
+              <span>Motor</span>
+              <div><i id="motorBand"></i></div>
+              <strong id="motorBandValue">0%</strong>
+            </div>
+            <div class="band-row">
+              <span>High</span>
+              <div><i id="highBand"></i></div>
+              <strong id="highBandValue">0%</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading compact">
+            <h2>Candidate Timeline</h2>
+            <span id="eventCount">0 events</span>
+          </div>
+          <ol class="timeline" id="timeline"></ol>
+          <div class="label-actions" aria-label="Event labeling">
+            <button data-label="drone" type="button">Drone</button>
+            <button data-label="not drone" type="button">Not drone</button>
+            <button data-label="unsure" type="button">Unsure</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="reference-grid" aria-label="Reference panels">
+        <article class="panel">
+          <h2>False Positives</h2>
+          <ul class="tag-list" id="falsePositiveList">
+            <li>Leaf blowers</li>
+            <li>Lawn equipment</li>
+            <li>Scooters</li>
+            <li>HVAC fans</li>
+            <li>Generators</li>
+            <li>Power tools</li>
+            <li>Helicopters</li>
+            <li>Wind and rain</li>
+          </ul>
+        </article>
+        <article class="panel workflow-panel">
+          <h2>Acoustic Workflow</h2>
+          <div class="workflow-steps">
+            <span>Capture</span>
+            <span>Estimate background</span>
+            <span>Track peaks</span>
+            <span>Score persistence</span>
+            <span>Review context</span>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
