@@ -1,0 +1,14 @@
+{
+  "name": "drone-sound-recognition",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser dashboard for exploring how drone-like acoustic signatures can be recognized from microphone, file or synthesized audio",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.65.0"
+  }
+}
